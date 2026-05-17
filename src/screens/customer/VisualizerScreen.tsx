@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback, createElement } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,7 +8,9 @@ import {
   Dimensions, 
   PanResponder, 
   Animated, 
-  Alert 
+  Alert,
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../../theme/theme';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -18,40 +20,15 @@ import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 const CANVAS_HEIGHT = 380;
 
+
+
 interface VisualizerScreenProps {
   route: any;
   navigation: any;
 }
 
-interface RoomTemplate {
-  id: number;
-  name: string;
-  url: string;
-}
-
-const ROOM_TEMPLATES: RoomTemplate[] = [
-  {
-    id: 1,
-    name: 'Luxury Living Room',
-    url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 2,
-    name: 'Royal Master Bedroom',
-    url: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 3,
-    name: 'Elegant Studio Lounge',
-    url: 'https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?auto=format&fit=crop&w=800&q=80'
-  }
-];
-
 export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navigation }) => {
   const { item } = route.params;
-
-  // Active room backdrop template
-  const [selectedRoom, setSelectedRoom] = useState<RoomTemplate>(ROOM_TEMPLATES[0]);
 
   // Overlay modification states
   const [scale, setScale] = useState<number>(1.0);
@@ -60,13 +37,96 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
   // Position animated coordinates
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
+  // Pure webcam status tracking ('initializing' | 'active' | 'denied')
+  const [cameraStatus, setCameraStatus] = useState<'initializing' | 'active' | 'denied'>('initializing');
+  const [cameraError, setCameraError] = useState<string>('');
+  const videoStreamRef = useRef<any>(null);
+
+  // Callback ref that guarantees stream binding as soon as the HTML5 video node mounts in DOM!
+  const videoRef = useCallback((node: any) => {
+    if (node && videoStreamRef.current) {
+      node.srcObject = videoStreamRef.current;
+    }
+  }, []);
+
+  // Request camera and start stream
+  const startCamera = async () => {
+    setCameraStatus('initializing');
+    setCameraError('');
+    
+    // Check if mediaDevices API is available
+    if (Platform.OS === 'web') {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const errMsg = 'navigator.mediaDevices is undefined (Insecure context or unsupported browser)';
+        console.error(errMsg);
+        setCameraError(errMsg);
+        setCameraStatus('denied');
+        return;
+      }
+
+      try {
+        let stream;
+        try {
+          // Try environment/rear camera first (ideal for mobile phone scanning)
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+          });
+        } catch (innerErr) {
+          console.warn('Environment camera constraint rejected, falling back to standard video:', innerErr);
+          // Fall back to standard webcam (ideal for PC webcams and laptops)
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true
+          });
+        }
+        
+        videoStreamRef.current = stream;
+        
+        // Direct DOM query fallback in case mount lifecycle is in-flight
+        setTimeout(() => {
+          const videoEl = document.querySelector('video');
+          if (videoEl) {
+            (videoEl as any).srcObject = stream;
+          }
+        }, 50);
+
+        setCameraStatus('active');
+      } catch (err: any) {
+        console.error('Camera access error:', err);
+        const errMsg = err.name ? `${err.name}: ${err.message}` : String(err);
+        setCameraError(errMsg);
+        setCameraStatus('denied');
+        
+        // Inform user how to manually enable permissions in browser
+        Alert.alert(
+          'Camera Permission Blocked',
+          `Access failed: ${errMsg}. Please click the settings/camera icon (🎥) in your browser address bar to allow camera access, then click ALLOW ACCESS again!`,
+          [{ text: 'Acknowledged', style: 'default' }]
+        );
+      }
+    } else {
+      // Direct active status for native/webcam mock simulation
+      setCameraStatus('active');
+    }
+  };
+
+  // Securely boot camera on mount and clean up on unmount
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (videoStreamRef.current) {
+        const tracks = videoStreamRef.current.getTracks();
+        tracks.forEach((track: any) => track.stop());
+      }
+    };
+  }, []);
+
   // --- INTERACTIVE DRAGGING: PAN RESPONDER SETUP ---
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         pan.setOffset({
-          // Capture offset to prevent item snapping on subsequent touches
           x: (pan.x as any)._value,
           y: (pan.y as any)._value
         });
@@ -74,7 +134,7 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
       },
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false } // Required for animated coordinates
+        { useNativeDriver: false }
       ),
       onPanResponderRelease: () => {
         pan.flattenOffset();
@@ -134,56 +194,104 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
 
       {/* --- ROOM VISUALIZER INTERACTIVE CANVAS --- */}
       <View style={styles.canvasFrame}>
-        {/* Backdrop Room Photo */}
-        <Image source={{ uri: selectedRoom.url }} style={styles.canvasBackground} />
+        {cameraStatus === 'initializing' && (
+          <View style={styles.placeholderContainer}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+            <Text style={styles.placeholderText}>Initializing AURA AR Camera...</Text>
+          </View>
+        )}
+
+        {cameraStatus === 'denied' && (
+          <View style={styles.placeholderContainer}>
+            <Ionicons name="camera-reverse-outline" size={48} color={COLORS.error} style={{ marginBottom: 12 }} />
+            <Text style={styles.deniedTitle}>CAMERA LOCKED</Text>
+            <Text style={styles.deniedSub}>
+              AURA requires camera permissions to overlay furniture on your actual room in real-time.
+            </Text>
+            
+            {cameraError ? (
+              <Text style={styles.errorDiagnosisText}>
+                DIAGNOSTIC: {cameraError}
+              </Text>
+            ) : null}
+
+            <TouchableOpacity style={styles.reRequestBtn} onPress={startCamera}>
+              <Text style={styles.reRequestBtnText}>ALLOW ACCESS</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Video stream layer */}
+        {Platform.OS === 'web' ? (
+          <View 
+            style={[styles.videoContainer, cameraStatus !== 'active' && { opacity: 0 }]}
+            pointerEvents="none"
+          >
+            {createElement('video', {
+              ref: videoRef,
+              autoPlay: true,
+              playsInline: true,
+              style: {
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                pointerEvents: 'none',
+              }
+            })}
+          </View>
+        ) : (
+          <View style={styles.placeholderContainer}>
+            <Ionicons name="sparkles-sharp" size={48} color={COLORS.accent} style={{ marginBottom: 12 }} />
+            <Text style={styles.placeholderText}>Live AR Camera Active (Native Mobile)</Text>
+          </View>
+        )}
         
         {/* Floating Item Canvas Wrapper */}
-        <View style={styles.overlayContainer}>
-          <Animated.View
-            {...panResponder.panHandlers}
-            style={[
-              pan.getLayout(),
-              {
-                transform: [
-                  { scale: scale },
-                  { rotate: `${rotation}deg` }
-                ]
-              }
-            ]}
-          >
-            <Image 
-              source={{ uri: item.image_url }} 
-              style={styles.floatingFurniture} 
-            />
-          </Animated.View>
-        </View>
+        {cameraStatus === 'active' && (
+          <View style={styles.overlayContainer}>
+            <Animated.View
+              {...panResponder.panHandlers}
+              style={[
+                pan.getLayout(),
+                {
+                  transform: [
+                    { scale: scale },
+                    { rotate: `${rotation}deg` }
+                  ]
+                }
+              ]}
+            >
+              <Image 
+                source={{ uri: item.image_url }} 
+                style={[
+                  styles.floatingFurniture,
+                  styles.arHologramEffect
+                ]} 
+              />
+            </Animated.View>
+          </View>
+        )}
       </View>
 
       {/* Backdrop Selectors Carousel */}
-      <Text style={styles.controlHeader}>SELECT BACKDROP SCENARIO</Text>
-      <View style={styles.backdropList}>
-        {ROOM_TEMPLATES.map((room) => (
-          <TouchableOpacity
-            key={room.id}
-            style={[
-              styles.backdropCard,
-              selectedRoom.id === room.id && styles.activeBackdropCard
-            ]}
-            onPress={() => setSelectedRoom(room)}
-            activeOpacity={0.8}
-          >
-            <Image source={{ uri: room.url }} style={styles.backdropThumb} />
-            <Text 
-              style={[
-                styles.backdropName,
-                selectedRoom.id === room.id && styles.activeBackdropName
-              ]}
-              numberOfLines={1}
-            >
-              {room.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <Text style={styles.controlHeader}>AR ROOM INSTRUCTIONS</Text>
+      <View style={styles.arActiveAlertRow}>
+        <Ionicons name="sparkles" size={20} color={COLORS.accent} style={{ marginRight: 12 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.instructionTitle}>HOW TO FIT PRODUCTS:</Text>
+          <Text style={styles.arActiveAlertText}>
+            1. Stand or hold your device pointing at the floor or wall where you want the furniture.
+          </Text>
+          <Text style={styles.arActiveAlertText}>
+            2. Use one finger to drag the product PNG and place it in position.
+          </Text>
+          <Text style={styles.arActiveAlertText}>
+            3. Tap the Scale and Rotation buttons below to adjust the dimensions to fit your space.
+          </Text>
+        </View>
       </View>
 
       {/* --- SCALING & ROTATION CONTROL WORKSTATION --- */}
@@ -197,7 +305,7 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
             <View style={styles.btnRow}>
               <TouchableOpacity 
                 style={styles.adjustBtn} 
-                onPress={() => setScale(Math.max(0.4, scale - 0.1))}
+                onPress={() => setScale(Math.max(0.2, scale - 0.1))}
                 activeOpacity={0.7}
               >
                 <Ionicons name="remove-circle-outline" size={24} color={COLORS.text} />
@@ -205,7 +313,7 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
               
               <TouchableOpacity 
                 style={styles.adjustBtn} 
-                onPress={() => setScale(Math.min(2.5, scale + 0.1))}
+                onPress={() => setScale(Math.min(6.0, scale + 0.1))}
                 activeOpacity={0.7}
               >
                 <Ionicons name="add-circle-outline" size={24} color={COLORS.accent} />
@@ -327,11 +435,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.border,
   },
-  canvasBackground: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -341,8 +444,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     resizeMode: 'contain',
-    // Slight opacity to make it look like a holographic AR projection
-    opacity: 0.95,
+    opacity: 0.72, // Exquisite holographic AR semi-transparency!
   },
   controlHeader: {
     fontSize: 10,
@@ -351,40 +453,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginHorizontal: 28,
     marginVertical: 10,
-  },
-  backdropList: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  backdropCard: {
-    width: (width - 64) / 3,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    padding: 6,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  activeBackdropCard: {
-    borderColor: COLORS.accent,
-  },
-  backdropThumb: {
-    width: '100%',
-    height: 54,
-    borderRadius: 8,
-  },
-  backdropName: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  activeBackdropName: {
-    color: COLORS.accent,
   },
   controlDashboard: {
     backgroundColor: COLORS.cardBg,
@@ -429,5 +497,102 @@ const styles = StyleSheet.create({
   saveBtnWrapper: {
     marginTop: 16,
     width: '100%',
+  },
+  // AR Live Camera Styles
+  placeholderContainer: {
+    flex: 1,
+    backgroundColor: '#0E0D11',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    ...StyleSheet.absoluteFillObject,
+  },
+  placeholderText: {
+    marginTop: 14,
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  deniedTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.error,
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  deniedSub: {
+    fontSize: 12,
+    color: '#A19EA9',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  reRequestBtn: {
+    backgroundColor: COLORS.accent,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  reRequestBtnText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  videoContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#000',
+  },
+  arHologramEffect: {
+    shadowColor: COLORS.accent || '#D4AF37',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  arActiveAlertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.05)',
+    borderColor: 'rgba(212, 175, 55, 0.15)',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 24,
+    marginBottom: 16,
+  },
+  instructionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.accent,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  arActiveAlertText: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  errorDiagnosisText: {
+    fontSize: 10,
+    color: '#FF6B6B',
+    fontWeight: '800',
+    marginTop: 4,
+    marginBottom: 16,
+    textAlign: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    letterSpacing: 0.5,
   },
 });

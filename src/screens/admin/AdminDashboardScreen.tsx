@@ -27,7 +27,7 @@ interface AdminDashboardScreenProps {
 }
 
 export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navigation }) => {
-  const { furniture, createFurniture, updateFurniture, softDeleteFurniture, isLoading } = useInventory();
+  const { furniture, createFurniture, updateFurniture, softDeleteFurniture, hardDeleteFurniture, isLoading } = useInventory();
 
   // Modal toggler
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -197,6 +197,34 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
     }
   };
 
+  const handleHardDelete = (id: string, itemName: string) => {
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm(`⚠️ WARNING: Permanently delete "${itemName}" from the database catalog? This action is IRREVERSIBLE!`);
+      if (confirmDelete) {
+        (async () => {
+          const error = await hardDeleteFurniture(id);
+          if (error) window.alert(error);
+        })();
+      }
+    } else {
+      Alert.alert(
+        '⚠️ Permanent Deletion',
+        `Are you absolutely sure you want to permanently delete "${itemName}" from the database? This action is IRREVERSIBLE!`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete Permanently', 
+            style: 'destructive',
+            onPress: async () => {
+              const error = await hardDeleteFurniture(id);
+              if (error) Alert.alert('Action Denied', error);
+            }
+          }
+        ]
+      );
+    }
+  };
+
   const renderInventoryCard = ({ item }: { item: FurnitureItem }) => (
     <View style={[styles.itemCard, SHADOWS.premium, item.is_hidden && styles.hiddenItemCard]}>
       <Image source={{ uri: item.image_url }} style={styles.itemImage} />
@@ -244,6 +272,15 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
               <Text style={[styles.actionBtnText, { color: COLORS.error }]}>HIDE</Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.hardDeleteBtn]}
+            onPress={() => handleHardDelete(item.id, item.name)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={16} color={COLORS.error} style={{ marginRight: 4 }} />
+            <Text style={[styles.actionBtnText, { color: COLORS.error }]}>DELETE</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -517,6 +554,10 @@ const styles = StyleSheet.create({
   unhideBtn: {
     backgroundColor: 'rgba(16, 185, 129, 0.05)',
     borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  hardDeleteBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
   actionBtnText: {
     fontSize: 10,

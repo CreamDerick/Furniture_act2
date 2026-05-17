@@ -17,9 +17,6 @@ import { useAuth } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { FurnitureItem } from '../../services/api';
 
-const { width } = Dimensions.get('window');
-const cardWidth = (width - 48) / 2;
-
 interface ShopDashboardScreenProps {
   navigation: any;
 }
@@ -262,9 +259,11 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   productCard: {
-    width: cardWidth,
+    flex: 1,
+    maxWidth: '48%',
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,
     borderWidth: 1,
@@ -274,7 +273,7 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: '100%',
-    height: cardWidth * 0.9,
+    aspectRatio: 1.1,
     backgroundColor: COLORS.inputBg,
   },
   cardInfo: {

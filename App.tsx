@@ -348,11 +348,13 @@ const AppRouter: React.FC = () => {
 // =====================================================================
 export default function App() {
   return (
-    <SafeAreaProvider style={{ flex: 1 }}>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: COLORS.background }}>
       <AuthProvider>
         <InventoryProvider>
           <CartProvider>
-            <AppRouter />
+            <View style={styles.appContainer}>
+              <AppRouter />
+            </View>
           </CartProvider>
         </InventoryProvider>
       </AuthProvider>
@@ -364,6 +366,18 @@ export default function App() {
 // 🎨 LAYOUT STYLES SHEET
 // =====================================================================
 const styles = StyleSheet.create({
+  appContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 1200 : undefined,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   flexContainer: {
     flex: 1,
     backgroundColor: COLORS.background,

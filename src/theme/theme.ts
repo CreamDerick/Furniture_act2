@@ -1,20 +1,20 @@
 export const COLORS = {
   // Theme core
-  primary: '#8A2BE2', // Amethyst Purple (Vibrant)
-  primaryLight: '#B19FFB', // Light Lavender
-  primaryDark: '#5E1B9A', // Deep Purple
-  accent: '#FFB300', // Champagne Gold / Luminous Amber (High Contrast Accent)
-  accentHover: '#E5A100', // Gold hover
+  primary: '#FF1493', // Deep Pink / Luminous Pink (Vibrant Core)
+  primaryLight: '#FF69B4', // Hot Pink / Light Rose
+  primaryDark: '#C71585', // Deep Velvet Pink
+  accent: '#FF2A85', // Electric Neon Pink (High Contrast Accent)
+  accentHover: '#E01E70', // Accent hover
   
   // Backgrounds & Surface
-  background: '#0D0814', // obsidian dark base
-  cardBg: '#171121', // Dark violet-gray card surface
-  modalBg: '#1B1426', // Deep purple-black for modals
-  inputBg: '#21182E', // Deep input background
+  background: '#0D060F', // Obsidian dark base (subtle magenta undertone)
+  cardBg: '#1A0F1E', // Dark rose-obsidian card surface
+  modalBg: '#1E1123', // Deep pink-black for modals
+  inputBg: '#25152C', // Deep magenta-black inputs
   
   // Borders
-  border: '#322547', // Muted purple borders
-  borderActive: '#8A2BE2', // Active border
+  border: '#3E1F46', // Muted rose borders
+  borderActive: '#FF1493', // Active pink border
   
   // State colors
   success: '#10B981', // Emerald green
@@ -24,9 +24,9 @@ export const COLORS = {
   
   // Text Colors
   text: '#FFFFFF', // High-fidelity white
-  textSecondary: '#AFA8BA', // Muted Lavender-Gray
-  textPlaceholder: '#5D5370', // Darker gray for placeholders
-  textContrast: '#0D0814', // Contrast text for gold/white buttons
+  textSecondary: '#E5C9E9', // Velvet Rose-Gray
+  textPlaceholder: '#6D4675', // Muted purple-rose placeholders
+  textContrast: '#0D060F', // Contrast text for buttons
 };
 
 export const TYPOGRAPHY = {
@@ -79,17 +79,17 @@ export const SPACING = {
 
 export const SHADOWS = {
   premium: {
-    shadowColor: '#8A2BE2',
+    shadowColor: '#FF1493',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 8,
   },
   accent: {
-    shadowColor: '#FFB300',
+    shadowColor: '#FF2A85',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
 };

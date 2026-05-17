@@ -35,6 +35,8 @@ export const ActivityLogsScreen: React.FC = () => {
         return { bg: 'rgba(59, 130, 246, 0.12)', text: COLORS.info, icon: 'git-compare-outline' as const };
       case 'SOFT_DELETE':
         return { bg: 'rgba(239, 68, 68, 0.12)', text: COLORS.error, icon: 'eye-off-outline' as const };
+      case 'HARD_DELETE':
+        return { bg: 'rgba(239, 68, 68, 0.15)', text: COLORS.error, icon: 'trash-outline' as const };
     }
   };
 

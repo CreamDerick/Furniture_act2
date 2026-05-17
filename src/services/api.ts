@@ -10,6 +10,8 @@ export interface Profile {
   address?: string;
   mobile_number?: string;
   created_at?: string;
+  email?: string; // High-fidelity mock custom credential saving
+  password?: string; // High-fidelity mock custom credential saving
 }
 
 export interface FurnitureItem {
@@ -35,7 +37,7 @@ export interface ActivityLog {
   id: string;
   admin_id: string;
   admin_name: string;
-  action: 'CREATE' | 'UPDATE' | 'SOFT_DELETE';
+  action: 'CREATE' | 'UPDATE' | 'SOFT_DELETE' | 'HARD_DELETE';
   target_item_id: string;
   target_item_name: string;
   details: string;
@@ -139,6 +141,21 @@ export const initializeMockDB = async () => {
     const inv = await AsyncStorage.getItem(KEY_INVENTORY);
     if (!inv) {
       await AsyncStorage.setItem(KEY_INVENTORY, JSON.stringify(DEFAULT_FURNITURE));
+    } else {
+      // Overwrite/restore original cover images for default items (f1-f8) to ensure they are the premium Unsplash photos!
+      const items: FurnitureItem[] = JSON.parse(inv);
+      let updated = false;
+      const newItems = items.map(item => {
+        const defaultItem = DEFAULT_FURNITURE.find(df => df.id === item.id);
+        if (defaultItem && item.image_url !== defaultItem.image_url) {
+          item.image_url = defaultItem.image_url;
+          updated = true;
+        }
+        return item;
+      });
+      if (updated) {
+        await AsyncStorage.setItem(KEY_INVENTORY, JSON.stringify(newItems));
+      }
     }
     
     const profs = await AsyncStorage.getItem(KEY_PROFILES);
@@ -224,19 +241,25 @@ export const authAPI = {
         return { user: null, error: err.message || 'Authentication error. Please try again.' };
       }
     } else {
-      // High-Fidelity Mock Authentication
+      // High-Fidelity Strict Mock Authentication
       await initializeMockDB();
       const profilesStr = await AsyncStorage.getItem(KEY_PROFILES);
       const profiles: Profile[] = profilesStr ? JSON.parse(profilesStr) : [];
       
-      // Simulating users by parsing email prefixes
+      // Enforce default mock accounts
       if (requestRole === 'admin' && cleanEmail === 'admin@furniture.com') {
+        if (password !== 'admin123') {
+          return { user: null, error: 'Invalid password for Admin. (Hint: use admin123)' };
+        }
         const adminProfile = profiles.find(p => p.role === 'admin');
         if (adminProfile) {
           await AsyncStorage.setItem(KEY_SESSION, JSON.stringify(adminProfile));
           return { user: adminProfile, error: null };
         }
       } else if (requestRole === 'user' && cleanEmail === 'user@furniture.com') {
+        if (password !== 'user123') {
+          return { user: null, error: 'Invalid password. (Hint: use user123)' };
+        }
         const userProfile = profiles.find(p => p.role === 'user');
         if (userProfile) {
           await AsyncStorage.setItem(KEY_SESSION, JSON.stringify(userProfile));
@@ -244,25 +267,26 @@ export const authAPI = {
         }
       }
       
-      // Let standard signups slide for customers dynamically
-      if (requestRole === 'user') {
-        const cleanName = cleanEmail.split('@')[0];
-        const formattedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
-        const newMockUser: Profile = {
-          id: `user_${Date.now()}`,
-          username: formattedName,
-          avatar_url: `https://ui-avatars.com/api/?name=${formattedName}&background=8A2BE2&color=fff`,
-          role: 'user',
-          address: 'No Address Stated',
-          mobile_number: '+1 (000) 000-0000'
-        };
-        profiles.push(newMockUser);
-        await AsyncStorage.setItem(KEY_PROFILES, JSON.stringify(profiles));
-        await AsyncStorage.setItem(KEY_SESSION, JSON.stringify(newMockUser));
-        return { user: newMockUser, error: null };
+      // Check if they are a user who previously signed up
+      const emailPrefix = cleanEmail.split('@')[0];
+      const matchProfile = profiles.find(
+        p => (p.email?.toLowerCase() === cleanEmail || p.username.toLowerCase() === emailPrefix.toLowerCase()) && p.role === requestRole
+      );
+      
+      if (matchProfile) {
+        const defaultPassword = requestRole === 'admin' ? 'admin123' : 'user123';
+        const expectedPassword = matchProfile.password || defaultPassword;
+        if (password !== expectedPassword) {
+          return { user: null, error: `Invalid password for this account. (Hint: use ${expectedPassword})` };
+        }
+        await AsyncStorage.setItem(KEY_SESSION, JSON.stringify(matchProfile));
+        return { user: matchProfile, error: null };
       }
 
-      return { user: null, error: `Invalid credentials for ${requestRole.toUpperCase()} login.` };
+      return { 
+        user: null, 
+        error: `Access Denied: Invalid email or password. Please use 'user@furniture.com' with password 'user123' to log in, or register a new account on the SIGN UP tab!` 
+      };
     }
   },
 
@@ -325,7 +349,9 @@ export const authAPI = {
         avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanUser)}&background=8A2BE2&color=fff`,
         role: 'user',
         address: '',
-        mobile_number: ''
+        mobile_number: '',
+        email: cleanEmail, // Save their signup email!
+        password: password, // Save their signup password!
       };
 
       profiles.push(newMockUser);
@@ -480,6 +506,34 @@ export const furnitureAPI = {
         id, 
         items[idx].name, 
         `Hiding "${items[idx].name}" from customers immediately (Soft Delete enabled).`
+      );
+    }
+  },
+
+  // Hard Delete / Permanent removal from database
+  hardDelete: async (id: string, admin: Profile): Promise<void> => {
+    if (IS_REAL_SUPABASE) {
+      const { error } = await supabase
+        .from('furniture')
+        .delete()
+        .eq('id', id);
+      if (error) throw new Error(error.message || 'Failed to permanently delete item.');
+    } else {
+      const items = await furnitureAPI.list();
+      const idx = items.findIndex(item => item.id === id);
+      if (idx === -1) throw new Error('Selected item was not found in inventory.');
+      const itemName = items[idx].name;
+      
+      const updatedItems = items.filter(item => item.id !== id);
+      await AsyncStorage.setItem(KEY_INVENTORY, JSON.stringify(updatedItems));
+
+      // Append Activity Log
+      await activityAPI.log(
+        admin, 
+        'HARD_DELETE', 
+        id, 
+        itemName, 
+        `Permanently removed "${itemName}" from the database catalog (Hard Delete).`
       );
     }
   }
@@ -699,7 +753,7 @@ export const activityAPI = {
     }
   },
 
-  log: async (admin: Profile, action: 'CREATE' | 'UPDATE' | 'SOFT_DELETE', targetId: string, targetName: string, details: string): Promise<void> => {
+  log: async (admin: Profile, action: 'CREATE' | 'UPDATE' | 'SOFT_DELETE' | 'HARD_DELETE', targetId: string, targetName: string, details: string): Promise<void> => {
     if (IS_REAL_SUPABASE) {
       // Note: Edge functions insert logs automatically as part of item modification triggers,
       // but if we need a direct audit logger:

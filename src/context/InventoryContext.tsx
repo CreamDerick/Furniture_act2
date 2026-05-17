@@ -11,6 +11,7 @@ interface InventoryContextType {
   createFurniture: (item: Omit<FurnitureItem, 'id' | 'is_hidden' | 'created_at'>) => Promise<string | null>;
   updateFurniture: (id: string, updates: Partial<Omit<FurnitureItem, 'id' | 'created_at'>>) => Promise<string | null>;
   softDeleteFurniture: (id: string) => Promise<string | null>;
+  hardDeleteFurniture: (id: string) => Promise<string | null>;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -87,6 +88,18 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const hardDeleteFurniture = async (id: string): Promise<string | null> => {
+    if (!user || user.role !== 'admin') return 'Unauthorized action.';
+    try {
+      await furnitureAPI.hardDelete(id, user);
+      await refreshInventory();
+      await refreshLogs();
+      return null;
+    } catch (err: any) {
+      return err.message || 'Failed to permanently delete selected item.';
+    }
+  };
+
   return (
     <InventoryContext.Provider
       value={{
@@ -97,7 +110,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         refreshLogs,
         createFurniture,
         updateFurniture,
-        softDeleteFurniture
+        softDeleteFurniture,
+        hardDeleteFurniture
       }}
     >
       {children}

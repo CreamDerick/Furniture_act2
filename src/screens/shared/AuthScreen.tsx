@@ -128,6 +128,8 @@ export const AuthScreen: React.FC = () => {
       if (error) {
         setGlobalError(error);
         setAuthLoading(false);
+      } else {
+        setAuthLoading(false);
       }
     } else {
       // CUSTOMER FLOW
@@ -137,12 +139,16 @@ export const AuthScreen: React.FC = () => {
         if (error) {
           setGlobalError(error);
           setAuthLoading(false);
+        } else {
+          setAuthLoading(false);
         }
       } else {
         setStatusMsg('Authenticating Customer credentials...');
         const error = await login(sanitizedEmail, password, 'user');
         if (error) {
           setGlobalError(error);
+          setAuthLoading(false);
+        } else {
           setAuthLoading(false);
         }
       }
@@ -311,12 +317,7 @@ export const AuthScreen: React.FC = () => {
               />
             </View>
             
-            {/* Quick Demo Credentials Help */}
-            <View style={styles.demoCredentialsBox}>
-              <Text style={styles.demoTitle}>Demo Verification Credentials:</Text>
-              <Text style={styles.demoLine}>• Admin: <Text style={styles.demoText}>admin@furniture.com</Text> / pwd: <Text style={styles.demoText}>admin123</Text></Text>
-              <Text style={styles.demoLine}>• Customer: <Text style={styles.demoText}>user@furniture.com</Text> / pwd: <Text style={styles.demoText}>user123</Text></Text>
-            </View>
+
 
           </View>
         </ScrollView>
