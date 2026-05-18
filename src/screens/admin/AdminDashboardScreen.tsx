@@ -19,6 +19,7 @@ import { CustomButton } from '../../components/CustomButton';
 import { useInventory } from '../../context/InventoryContext';
 import { FurnitureItem } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { IS_REAL_SUPABASE, supabase } from '../../services/supabaseClient';
 
 const { width } = Dimensions.get('window');
 
@@ -37,11 +38,75 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
   const [name, setName] = useState<string>('');
   const [price, setPrice] = useState<string>('');
   const [imageUrl, setImageUrl] = useState<string>('');
+  const [arImageUrl, setArImageUrl] = useState<string>('');
   const [category, setCategory] = useState<FurnitureItem['category']>('Sofas & Armchairs');
   const [description, setDescription] = useState<string>('');
 
   // Error state
   const [errors, setErrors] = useState<{ [key: string]: string | null }>({});
+  const [uploading, setUploading] = useState<boolean>(false);
+
+  const handlePickPng = () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Web Only', 'Local file upload is currently supported on web platforms.');
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setUploading(true);
+      try {
+        if (IS_REAL_SUPABASE) {
+          const fileExt = file.name.split('.').pop() || 'png';
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `cutouts/${fileName}`;
+
+          // Attempt secure upload to Supabase storage bucket
+          const { data, error } = await supabase.storage
+            .from('furniture')
+            .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+          if (error) {
+            console.warn('Storage bucket upload failed, falling back to base64 encoding', error);
+            throw error;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('furniture')
+            .getPublicUrl(filePath);
+
+          setArImageUrl(publicUrl);
+          Alert.alert('Upload Successful', 'PNG cutout uploaded and hosted successfully on Supabase storage!');
+        } else {
+          // Offline Mode: Convert to Base64
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            setArImageUrl(base64data);
+            Alert.alert('Import Successful', 'Local PNG file converted to persistent offline data URL successfully!');
+          };
+          reader.readAsDataURL(file);
+        }
+      } catch (err: any) {
+        // Safe base64 fallback in case bucket is unconfigured
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          setArImageUrl(base64data);
+          Alert.alert('Import Successful', 'PNG converted to Base64 (Storage fallback). Saved successfully!');
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setUploading(false);
+      }
+    };
+    input.click();
+  };
   const [submitLoading, setSubmitLoading] = useState<boolean>(false);
 
   const categories: FurnitureItem['category'][] = [
@@ -56,6 +121,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
     setName('');
     setPrice('');
     setImageUrl('');
+    setArImageUrl('');
     setCategory('Sofas & Armchairs');
     setDescription('');
     setErrors({});
@@ -67,6 +133,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
     setName(item.name);
     setPrice(item.price.toString());
     setImageUrl(item.image_url);
+    setArImageUrl(item.ar_image_url || '');
     setCategory(item.category);
     setDescription(item.description);
     setErrors({});
@@ -118,6 +185,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
         name: cleanName,
         price: numericPrice,
         image_url: imageUrl.trim(),
+        ar_image_url: arImageUrl.trim() || undefined,
         category,
         description: cleanDesc
       });
@@ -127,6 +195,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
         name: cleanName,
         price: numericPrice,
         image_url: imageUrl.trim(),
+        ar_image_url: arImageUrl.trim() || undefined,
         category,
         description: cleanDesc
       });
@@ -368,6 +437,39 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ navi
                 placeholder="https://images.unsplash.com/photo-..."
                 error={errors.imageUrl}
               />
+
+              <CustomInput
+                label="AR Transparent PNG Cutout URL (Optional)"
+                value={arImageUrl}
+                onChangeText={setArImageUrl}
+                placeholder="https://pngimg.com/uploads/..."
+                error={errors.arImageUrl}
+              />
+
+              <View style={styles.uploadContainer}>
+                <TouchableOpacity
+                  style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
+                  onPress={handlePickPng}
+                  disabled={uploading}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={uploading ? "sync-outline" : "cloud-upload-outline"} 
+                    size={16} 
+                    color={COLORS.textContrast} 
+                    style={{ marginRight: 6 }} 
+                  />
+                  <Text style={styles.uploadBtnText}>
+                    {uploading ? "UPLOADING FILE..." : "UPLOAD LOCAL PNG FILE"}
+                  </Text>
+                </TouchableOpacity>
+                {arImageUrl ? (
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Current PNG Preview:</Text>
+                    <Image source={{ uri: arImageUrl }} style={styles.previewImage} />
+                  </View>
+                ) : null}
+              </View>
 
               {/* Custom Selector for Categories */}
               <Text style={styles.categoryLabel}>FURNITURE CATEGORY</Text>
@@ -650,5 +752,51 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     marginTop: 10,
+  },
+  uploadContainer: {
+    backgroundColor: COLORS.inputBg,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: -4,
+    marginBottom: 12,
+  },
+  uploadBtn: {
+    height: 40,
+    backgroundColor: COLORS.accent,
+    borderRadius: 6,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadBtnDisabled: {
+    opacity: 0.5,
+  },
+  uploadBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.textContrast,
+    letterSpacing: 0.5,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  previewLabel: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  previewImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
 });

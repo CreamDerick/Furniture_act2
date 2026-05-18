@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  Image, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
   Alert,
   Platform
 } from 'react-native';
@@ -17,32 +17,47 @@ import { Ionicons } from '@expo/vector-icons';
 
 export const AdminProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
-  
+
   // Modifiers
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [username, setUsername] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
-  
+
   // Feedback states
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string | null }>({});
 
-  // Sync avatar url
+  // Sync profile details
   useEffect(() => {
     if (user) {
+      setUsername(user.username || '');
       setAvatarUrl(user.avatar_url || '');
     }
   }, [user]);
 
   const handleSave = async () => {
-    setError(null);
-    if (!avatarUrl.trim()) {
-      setError('Avatar URL cannot be empty.');
-      return;
+    const tempErrors: { [key: string]: string | null } = {};
+    let isValid = true;
+
+    if (!username.trim()) {
+      tempErrors.username = 'Username is required.';
+      isValid = false;
+    } else if (username.trim().length < 3) {
+      tempErrors.username = 'Username must be at least 3 characters.';
+      isValid = false;
     }
 
+    if (!avatarUrl.trim()) {
+      tempErrors.avatarUrl = 'Avatar URL is required.';
+      isValid = false;
+    }
+
+    setErrors(tempErrors);
+    if (!isValid) return;
+
     setLoading(true);
-    // Explicitly update only avatar. System blocks username modifications in context and services.
     const err = await updateProfile({
+      username: username.trim(),
       avatar_url: avatarUrl.trim()
     });
     setLoading(false);
@@ -51,7 +66,7 @@ export const AdminProfileScreen: React.FC = () => {
       Alert.alert('Action Denied', err);
     } else {
       setIsEditing(false);
-      Alert.alert('Profile Updated', 'Administrator profile photo has been modified successfully!');
+      Alert.alert('Profile Updated', 'Administrator profile details have been modified successfully!');
     }
   };
 
@@ -67,8 +82,8 @@ export const AdminProfileScreen: React.FC = () => {
         'Are you sure you want to exit the management console? Audit logs will capture this session termination.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Sign Out', 
+          {
+            text: 'Sign Out',
             style: 'destructive',
             onPress: async () => await logout()
           }
@@ -79,12 +94,12 @@ export const AdminProfileScreen: React.FC = () => {
 
   return (
     <ScreenContainer scrollable={true} isLoading={loading} statusMessage="Saving profile updates...">
-      
+
       {/* Top Banner Control Room */}
       <View style={styles.banner}>
-        
+
         {/* User Edit Trigger Badge */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.editBadge}
           onPress={() => {
             if (isEditing) {
@@ -95,10 +110,10 @@ export const AdminProfileScreen: React.FC = () => {
           }}
           activeOpacity={0.8}
         >
-          <Ionicons 
-            name={isEditing ? 'checkmark-sharp' : 'create-outline'} 
-            size={16} 
-            color={COLORS.textContrast} 
+          <Ionicons
+            name={isEditing ? 'checkmark-sharp' : 'create-outline'}
+            size={16}
+            color={COLORS.textContrast}
           />
           <Text style={styles.badgeText}>
             {isEditing ? 'SAVE' : 'EDIT'}
@@ -107,11 +122,11 @@ export const AdminProfileScreen: React.FC = () => {
 
         {/* Large Admin Avatar */}
         <View style={[styles.avatarWrapper, SHADOWS.premium]}>
-          <Image 
-            source={{ 
-              uri: avatarUrl || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=300&q=80' 
-            }} 
-            style={styles.avatar} 
+          <Image
+            source={{
+              uri: avatarUrl || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=300&q=80'
+            }}
+            style={styles.avatar}
           />
         </View>
 
@@ -121,52 +136,39 @@ export const AdminProfileScreen: React.FC = () => {
 
       {/* Info & Inputs Cards */}
       <View style={styles.profileCard}>
-        
-        {/* Secure Padlocked Administrative Metadata (Rule 1: Fixed Username) */}
+
         <Text style={styles.sectionHeader}>SECURED MANAGEMENT ID</Text>
 
-        <View style={styles.lockedUsernameCard}>
-          <View style={styles.labelRow}>
-            <Text style={styles.lockedLabel}>ADMINISTRATOR USERNAME</Text>
-            <View style={styles.padlockBadge}>
-              <Ionicons name="lock-closed" size={10} color={COLORS.textContrast} style={{ marginRight: 4 }} />
-              <Text style={styles.padlockText}>LOCKED FIELD</Text>
-            </View>
-          </View>
-          <View style={styles.usernameBox}>
-            <Text style={styles.usernameText}>{user?.username}</Text>
-          </View>
-          
-          {/* Security Notice Explanation */}
-          <View style={styles.lockedNotice}>
-            <Ionicons name="shield-checkmark" size={14} color={COLORS.success} style={{ marginRight: 6 }} />
-            <Text style={styles.noticeText}>
-              Security Mandate: Admin Usernames are permanently locked to preserve audit trail integrity.
-            </Text>
-          </View>
-        </View>
+        <CustomInput
+          label="Administrator Username"
+          value={username}
+          onChangeText={setUsername}
+          editable={isEditing}
+          error={errors.username}
+        />
 
         <CustomInput
           label="Profile Photo Avatar URL"
           value={avatarUrl}
           onChangeText={setAvatarUrl}
           editable={isEditing}
-          error={error}
+          error={errors.avatarUrl}
         />
 
         {isEditing ? (
           <View style={styles.saveBtnWrapper}>
             <CustomButton
-              title="SAVE PHOTO CHANGES"
+              title="SAVE PROFILE CHANGES"
               onPress={handleSave}
               variant="primary"
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelBtn}
               onPress={() => {
                 setIsEditing(false);
-                setError(null);
+                setErrors({});
                 if (user) {
+                  setUsername(user.username || '');
                   setAvatarUrl(user.avatar_url || '');
                 }
               }}
@@ -253,71 +255,6 @@ const styles = StyleSheet.create({
     color: COLORS.primaryLight,
     letterSpacing: 1.2,
     marginBottom: 12,
-  },
-  lockedUsernameCard: {
-    backgroundColor: COLORS.inputBg,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    padding: 16,
-    marginBottom: 16,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  lockedLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    letterSpacing: 0.5,
-  },
-  padlockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.accent,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    borderRadius: 4,
-  },
-  padlockText: {
-    fontSize: 8,
-    fontWeight: '900',
-    color: COLORS.textContrast,
-    letterSpacing: 0.5,
-  },
-  usernameBox: {
-    height: 48,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  usernameText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-  },
-  lockedNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  noticeText: {
-    fontSize: 10.5,
-    color: COLORS.textSecondary,
-    flex: 1,
-    lineHeight: 14,
-    fontWeight: '500',
   },
   saveBtnWrapper: {
     marginTop: 16,

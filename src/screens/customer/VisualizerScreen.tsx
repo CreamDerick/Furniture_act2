@@ -16,6 +16,7 @@ import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../../theme/theme';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { CustomButton } from '../../components/CustomButton';
 import { Ionicons } from '@expo/vector-icons';
+import { useInventory } from '../../context/InventoryContext';
 
 const { width } = Dimensions.get('window');
 const CANVAS_HEIGHT = 380;
@@ -28,7 +29,10 @@ interface VisualizerScreenProps {
 }
 
 export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navigation }) => {
-  const { item } = route.params;
+  const { furniture, refreshInventory } = useInventory();
+  
+  // Resolve dynamically to the absolute latest version of this product in context state
+  const item = furniture.find(f => f.id === route.params.item.id) || route.params.item;
 
   // Overlay modification states
   const [scale, setScale] = useState<number>(1.0);
@@ -112,6 +116,7 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
   // Securely boot camera on mount and clean up on unmount
   useEffect(() => {
     startCamera();
+    refreshInventory(); // Safely sync catalog changes in the background!
     return () => {
       if (videoStreamRef.current) {
         const tracks = videoStreamRef.current.getTracks();
@@ -265,7 +270,7 @@ export const VisualizerScreen: React.FC<VisualizerScreenProps> = ({ route, navig
               ]}
             >
               <Image 
-                source={{ uri: item.image_url }} 
+                source={{ uri: item.ar_image_url || item.image_url }} 
                 style={[
                   styles.floatingFurniture,
                   styles.arHologramEffect
@@ -444,7 +449,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     resizeMode: 'contain',
-    opacity: 0.72, // Exquisite holographic AR semi-transparency!
+    opacity: 1.0, // Full solid premium photo overlay!
   },
   controlHeader: {
     fontSize: 10,

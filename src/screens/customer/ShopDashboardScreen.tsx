@@ -23,11 +23,19 @@ interface ShopDashboardScreenProps {
 
 export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
-  const { furniture, isLoading } = useInventory();
+  const { furniture, refreshInventory, isLoading } = useInventory();
   const { cartCount } = useCart();
   
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Automatically fetch fresh catalog items every time the customer views the showroom
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      refreshInventory();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const categories = ['All', 'Sofas & Armchairs', 'Tables & Desks', 'Beds & Mattresses', 'Chairs & Stools'];
 

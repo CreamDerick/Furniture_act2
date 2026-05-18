@@ -19,6 +19,7 @@ export interface FurnitureItem {
   name: string;
   price: number;
   image_url: string;
+  ar_image_url?: string; // Transparent PNG specifically for AR overlays
   category: 'Sofas & Armchairs' | 'Tables & Desks' | 'Beds & Mattresses' | 'Chairs & Stools';
   description: string;
   is_hidden: boolean; // Soft delete field
@@ -51,38 +52,42 @@ const DEFAULT_FURNITURE: FurnitureItem[] = [
     name: 'Royal Amethyst Armchair',
     price: 899,
     image_url: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/armchair/armchair_PNG7015.png',
     category: 'Sofas & Armchairs',
-    description: 'Upholstered in rich deep amethyst velvet and trimmed with premium brushed gold metal legs. Ergonomic seating designed to combine high-luxury style with absolute comfort.',
+    description: 'Upholstered in rich deep amethyst velvet and set on premium wooden legs. Designed to combine a modern, high-luxury aesthetic with absolute comfort.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
   {
     id: 'f2',
-    name: 'Aurelia Marble Desk',
+    name: 'Aurelia Wooden Desk',
     price: 1299,
     image_url: 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/table/table_PNG6976.png',
     category: 'Tables & Desks',
-    description: 'A striking work desk featuring a premium black Calacatta marble slab inlaid with delicate golden veins. Set on an elegant obsidian geometric support architecture.',
+    description: 'A striking work desk crafted from premium dark solid mahogany. Sleek, minimalist framing that adds warmth and sophistication to any modern home office workspace.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
   {
     id: 'f3',
-    name: 'Sovereign Velvet Bedframe',
+    name: 'Sovereign Wooden Bedframe',
     price: 2499,
     image_url: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/bed/bed_PNG17423.png',
     category: 'Beds & Mattresses',
-    description: 'A grand master bedroom bedframe with an expansive tufted headboard, hand-stitched with amethyst purple threads and accentuated with custom brass borders.',
+    description: 'A master bedroom bedframe crafted from fine, organic oak wood. Sturdy architectural support and low-profile styling that brings natural elegance to your bedroom.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
   {
     id: 'f4',
-    name: 'Majestic Gold Accent Chair',
+    name: 'Majestic Executive Chair',
     price: 450,
-    image_url: 'https://images.unsplash.com/photo-1580481072645-022f9a6dbf27?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/chair/chair_PNG6901.png',
     category: 'Chairs & Stools',
-    description: 'A modern sculptural chair crafted in solid chrome steel and electroplated with pure champagne gold. A high-contrast premium accent piece to elevate any contemporary interior.',
+    description: 'An ergonomic high-back desk chair upholstered in premium black top-grain leather. Fully adjustable mechanics and thick memory foam contours for maximum workflow comfort.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
@@ -90,9 +95,10 @@ const DEFAULT_FURNITURE: FurnitureItem[] = [
     id: 'f5',
     name: 'Imperial Chesterfield Sofa',
     price: 3200,
-    image_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=600&q=80',
+    image_url: 'https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/sofa/sofa_PNG6927.png',
     category: 'Sofas & Armchairs',
-    description: 'Classic Chesterfield design re-imagined with deep-buttoned premium amethyst leather. Wide scrolled armrests and solid dark mahogany bun feet with gold metal caps.',
+    description: 'Classic Chesterfield design re-imagined with deep-buttoned premium vintage brown leather. Wide scrolled armrests and solid hand-turned mahogany bun feet.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
@@ -101,8 +107,9 @@ const DEFAULT_FURNITURE: FurnitureItem[] = [
     name: 'Luxor Glass Dining Table',
     price: 1500,
     image_url: 'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/table/table_PNG6977.png',
     category: 'Tables & Desks',
-    description: 'A dining experience built around a thick tempered glass tabletop, supported by a mesmerizing, interlocking double-ring base finished in luxurious antique gold.',
+    description: 'A contemporary dining table featuring a heavy, circular tempered glass tabletop set on a minimalist solid wood support frame.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
@@ -111,18 +118,20 @@ const DEFAULT_FURNITURE: FurnitureItem[] = [
     name: 'Crown Rest Ortho Mattress',
     price: 950,
     image_url: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/bed/bed_PNG17423.png',
     category: 'Beds & Mattresses',
-    description: 'Elite multi-layer memory foam mattress utilizing copper-infused cooling tech. Specifically engineered for targeted spine alignment and therapeutic body contour support.',
+    description: 'Elite multi-layer orthopedic support mattress, specifically engineered to promote optimal spinal alignment and deep, restorative sleep.',
     is_hidden: false,
     created_at: new Date().toISOString()
   },
   {
     id: 'f8',
-    name: 'Monarch Velvet Barstool',
+    name: 'Monarch Executive Barstool',
     price: 280,
     image_url: 'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=600&q=80',
+    ar_image_url: 'https://pngimg.com/uploads/chair/chair_PNG6901.png',
     category: 'Chairs & Stools',
-    description: 'Elevate your bar counter with this plush, purple-velvet counter-height stool, featuring a golden ring footrest and robust obsidian powder-coated iron chassis.',
+    description: 'Elevate your workspace or kitchen counter with this premium executive stool, contoured with high-back lumbar support and a robust steel chassis.',
     is_hidden: false,
     created_at: new Date().toISOString()
   }
@@ -136,28 +145,22 @@ const KEY_LOGS = '@furniture_activity_logs';
 const KEY_SESSION = '@furniture_session';
 
 // --- MOCK DATABASE INITIALIZER ---
+const KEY_SEED_VERSION = '@furniture_seed_version_v5';
+
 export const initializeMockDB = async () => {
   try {
+    // One-time database migration reset to force propagation of the brand new matching lifestyle images!
+    const seedVersion = await AsyncStorage.getItem(KEY_SEED_VERSION);
+    if (seedVersion !== 'v5') {
+      await AsyncStorage.removeItem(KEY_INVENTORY);
+      await AsyncStorage.setItem(KEY_SEED_VERSION, 'v5');
+    }
+
     const inv = await AsyncStorage.getItem(KEY_INVENTORY);
     if (!inv) {
       await AsyncStorage.setItem(KEY_INVENTORY, JSON.stringify(DEFAULT_FURNITURE));
-    } else {
-      // Overwrite/restore original cover images for default items (f1-f8) to ensure they are the premium Unsplash photos!
-      const items: FurnitureItem[] = JSON.parse(inv);
-      let updated = false;
-      const newItems = items.map(item => {
-        const defaultItem = DEFAULT_FURNITURE.find(df => df.id === item.id);
-        if (defaultItem && item.image_url !== defaultItem.image_url) {
-          item.image_url = defaultItem.image_url;
-          updated = true;
-        }
-        return item;
-      });
-      if (updated) {
-        await AsyncStorage.setItem(KEY_INVENTORY, JSON.stringify(newItems));
-      }
     }
-    
+
     const profs = await AsyncStorage.getItem(KEY_PROFILES);
     if (!profs) {
       // Default Mock Accounts
@@ -219,7 +222,7 @@ export const authAPI = {
           password
         });
         if (error) throw error;
-        
+
         // Fetch matching role profile
         const { data: profile, error: profError } = await supabase
           .from('profiles')
@@ -245,7 +248,7 @@ export const authAPI = {
       await initializeMockDB();
       const profilesStr = await AsyncStorage.getItem(KEY_PROFILES);
       const profiles: Profile[] = profilesStr ? JSON.parse(profilesStr) : [];
-      
+
       // Enforce default mock accounts
       if (requestRole === 'admin' && cleanEmail === 'admin@furniture.com') {
         if (password !== 'admin123') {
@@ -266,13 +269,13 @@ export const authAPI = {
           return { user: userProfile, error: null };
         }
       }
-      
+
       // Check if they are a user who previously signed up
       const emailPrefix = cleanEmail.split('@')[0];
       const matchProfile = profiles.find(
         p => (p.email?.toLowerCase() === cleanEmail || p.username.toLowerCase() === emailPrefix.toLowerCase()) && p.role === requestRole
       );
-      
+
       if (matchProfile) {
         const defaultPassword = requestRole === 'admin' ? 'admin123' : 'user123';
         const expectedPassword = matchProfile.password || defaultPassword;
@@ -283,9 +286,9 @@ export const authAPI = {
         return { user: matchProfile, error: null };
       }
 
-      return { 
-        user: null, 
-        error: `Access Denied: Invalid email or password. Please use 'user@furniture.com' with password 'user123' to log in, or register a new account on the SIGN UP tab!` 
+      return {
+        user: null,
+        error: `Access Denied: Invalid email or password. Please use 'user@furniture.com' with password 'user123' to log in, or register a new account on the SIGN UP tab!`
       };
     }
   },
@@ -318,7 +321,7 @@ export const authAPI = {
           }
         });
         if (error) throw error;
-        
+
         // Edge functions automatically seed profile table on auth signup.
         // We retrieve the newly created profile via Edge Function profile-api.
         const { data: profile, error: profError } = await supabase
@@ -365,7 +368,7 @@ export const authAPI = {
     if (IS_REAL_SUPABASE) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
-      
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -463,7 +466,7 @@ export const furnitureAPI = {
       const items = await furnitureAPI.list();
       const idx = items.findIndex(item => item.id === id);
       if (idx === -1) throw new Error('Selected item was not found in inventory.');
-      
+
       const updatedItem = {
         ...items[idx],
         ...updates
@@ -473,10 +476,10 @@ export const furnitureAPI = {
 
       // Append Activity Log
       await activityAPI.log(
-        admin, 
-        'UPDATE', 
-        id, 
-        updatedItem.name, 
+        admin,
+        'UPDATE',
+        id,
+        updatedItem.name,
         `Updated details for "${updatedItem.name}". New details: ${JSON.stringify(updates)}`
       );
       return updatedItem;
@@ -501,10 +504,10 @@ export const furnitureAPI = {
 
       // Append Activity Log
       await activityAPI.log(
-        admin, 
-        'SOFT_DELETE', 
-        id, 
-        items[idx].name, 
+        admin,
+        'SOFT_DELETE',
+        id,
+        items[idx].name,
         `Hiding "${items[idx].name}" from customers immediately (Soft Delete enabled).`
       );
     }
@@ -523,16 +526,16 @@ export const furnitureAPI = {
       const idx = items.findIndex(item => item.id === id);
       if (idx === -1) throw new Error('Selected item was not found in inventory.');
       const itemName = items[idx].name;
-      
+
       const updatedItems = items.filter(item => item.id !== id);
       await AsyncStorage.setItem(KEY_INVENTORY, JSON.stringify(updatedItems));
 
       // Append Activity Log
       await activityAPI.log(
-        admin, 
-        'HARD_DELETE', 
-        id, 
-        itemName, 
+        admin,
+        'HARD_DELETE',
+        id,
+        itemName,
         `Permanently removed "${itemName}" from the database catalog (Hard Delete).`
       );
     }
@@ -561,7 +564,7 @@ export const cartAPI = {
       const cartStr = await AsyncStorage.getItem(KEY_CARTS);
       const carts: CartItem[] = cartStr ? JSON.parse(cartStr) : [];
       const userCarts = carts.filter(item => item.user_id === userId);
-      
+
       // Hydrate with furniture detail
       const furniture = await furnitureAPI.list();
       return userCarts.map(item => ({
@@ -582,7 +585,7 @@ export const cartAPI = {
       await initializeMockDB();
       const cartStr = await AsyncStorage.getItem(KEY_CARTS);
       const carts: CartItem[] = cartStr ? JSON.parse(cartStr) : [];
-      
+
       const idx = carts.findIndex(item => item.user_id === userId && item.furniture_id === furnitureId);
       if (idx !== -1) {
         carts[idx].quantity += quantity;
@@ -603,7 +606,7 @@ export const cartAPI = {
       await cartAPI.removeFromCart(userId, furnitureId);
       return;
     }
-    
+
     if (IS_REAL_SUPABASE) {
       const { error } = await supabase.functions.invoke('cart-api', {
         method: 'PUT',
@@ -679,10 +682,6 @@ export const profileAPI = {
 
   update: async (userId: string, updates: Partial<Omit<Profile, 'id' | 'role' | 'created_at'>>, requestUserRole: 'admin' | 'user'): Promise<Profile> => {
     // 1. INPUT SANITIZATION & STAGE CHECKS
-    if (requestUserRole === 'admin' && updates.username !== undefined) {
-      // Strict constraint: Admin cannot edit their own username
-      throw new Error('Security Breach: Administrators are restricted from editing their username.');
-    }
     if (updates.mobile_number !== undefined && updates.mobile_number !== '') {
       // Validate mobile number characters
       const cleanMobile = updates.mobile_number.replace(/[\s()+-]/g, '');
@@ -705,18 +704,13 @@ export const profileAPI = {
       const idx = profiles.findIndex(p => p.id === userId);
       if (idx === -1) throw new Error('User profile not found.');
 
-      // Extra check inside mock layer just in case
-      if (profiles[idx].role === 'admin' && updates.username !== undefined) {
-        throw new Error('Security policy: Admin username is fixed.');
-      }
-
       const updated = {
         ...profiles[idx],
         ...updates
       };
       profiles[idx] = updated;
       await AsyncStorage.setItem(KEY_PROFILES, JSON.stringify(profiles));
-      
+
       // Update session storage as well
       const session = await AsyncStorage.getItem(KEY_SESSION);
       if (session) {
@@ -765,7 +759,7 @@ export const activityAPI = {
       await initializeMockDB();
       const logsStr = await AsyncStorage.getItem(KEY_LOGS);
       const logs: ActivityLog[] = logsStr ? JSON.parse(logsStr) : [];
-      
+
       const newLog: ActivityLog = {
         id: `log_${Date.now()}`,
         admin_id: admin.id,
@@ -776,7 +770,7 @@ export const activityAPI = {
         details,
         created_at: new Date().toISOString()
       };
-      
+
       logs.unshift(newLog);
       await AsyncStorage.setItem(KEY_LOGS, JSON.stringify(logs));
     }
